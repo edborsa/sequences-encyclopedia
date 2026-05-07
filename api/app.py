@@ -5,7 +5,6 @@ from flask_cors import CORS
 from psycopg import connect
 from psycopg.rows import dict_row
 
-
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql://oeis:oeis@localhost:5432/oeis",
@@ -16,10 +15,9 @@ CORS(app)
 
 
 def query(sql, params=()):
-    with connect(DATABASE_URL, row_factory=dict_row) as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, params)
-            return cur.fetchall()
+    with connect(DATABASE_URL, row_factory=dict_row) as conn, conn.cursor() as cur:
+        cur.execute(sql, params)
+        return cur.fetchall()
 
 
 def shape(row):

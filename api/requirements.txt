@@ -1,3 +1,6 @@
 flask
 flask-cors
 psycopg[binary]
+pytest
+pytest-cov
+ruff
