@@ -18,6 +18,8 @@ FIXTURE_ROWS = [
     (9_900_001, "A9900001", "Alpha test sequence", "2,3,5,7", "easy", "1"),
     (9_900_002, "A9900002", "Bravo with trailing comma", "1,2,", None, None),
     (9_900_003, "A9900003", "Charlie empty data", "", None, "0"),
+    (9_900_004, "A9900004", "Hotglue Fibonacci sample", "1,1,2,3,5", "math", "0"),
+    (9_900_005, "A9900005", "Hotglue Fibonacci variants", "1,3,4,7", None, None),
 ]
 
 

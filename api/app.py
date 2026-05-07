@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from psycopg import connect
 from psycopg.rows import dict_row
@@ -40,14 +40,28 @@ def health():
 
 @app.get("/sequences")
 def sequences():
-    rows = query(
-        """
-        select sequence_number, oeis_id, name, data, keywords, offset_value
-        from oeis_sequences
-        order by name
-        limit 200
-        """
-    )
+    search_term = (request.args.get("q") or "").strip()
+
+    if search_term:
+        rows = query(
+            """
+            select sequence_number, oeis_id, name, data, keywords, offset_value
+            from oeis_sequences
+            where name ilike %s
+            order by name
+            limit 200
+            """,
+            (f"%{search_term}%",),
+        )
+    else:
+        rows = query(
+            """
+            select sequence_number, oeis_id, name, data, keywords, offset_value
+            from oeis_sequences
+            order by name
+            limit 200
+            """
+        )
     return jsonify([shape(row) for row in rows])
 
 
