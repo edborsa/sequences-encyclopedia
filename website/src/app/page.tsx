@@ -1,22 +1,23 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { HomeSearchPage } from "@/components/home-search-page";
 import { getSequences } from "@/lib/api";
+import { buildHomePath, normalizeSearchTerm } from "@/lib/search";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
-  const sequences = (await getSequences()) ?? [];
+type HomePageProps = {
+  searchParams: Promise<{ q?: string | string[] }>;
+};
 
-  return (
-    <main>
-      <h1>Sequences Encyclopedia</h1>
-      <ul>
-        {sequences.map((sequence) => (
-          <li key={sequence.id}>
-            <Link href={`/sequences/${sequence.id}`}>{sequence.id}</Link>
-            <span>{sequence.name}</span>
-          </li>
-        ))}
-      </ul>
-    </main>
-  );
+export default async function Home({ searchParams }: HomePageProps) {
+  const rawQ = (await searchParams).q;
+  const searchTerm = normalizeSearchTerm(rawQ);
+
+  if (rawQ !== undefined && !searchTerm) {
+    redirect(buildHomePath());
+  }
+
+  const sequences = await getSequences(searchTerm);
+
+  return <HomeSearchPage searchTerm={searchTerm} sequences={sequences} />;
 }
