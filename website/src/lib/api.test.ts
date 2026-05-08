@@ -16,61 +16,46 @@ describe("buildSequencesPath", () => {
   });
 });
 
-describe("api fetching", () => {
+describe("api results", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("fetches the default sequences endpoint", async () => {
-    const fetchMock = vi.fn(async () => new Response("[]", { status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    const result = await getSequences();
-
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:5001/sequences", {
-      cache: "no-store",
-    });
-    expect(result).toEqual([]);
-  });
-
-  it("fetches the search endpoint when a search term is provided", async () => {
-    const fetchMock = vi.fn(async () => new Response("[]", { status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    const result = await getSequences("prime");
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:5001/sequences?q=prime",
-      {
-        cache: "no-store",
-      },
+  it("returns ok with parsed data on 200", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("[]", { status: 200 })),
     );
-    expect(result).toEqual([]);
+    const result = await getSequences();
+    expect(result).toEqual({ ok: true, data: [] });
   });
 
-  it("returns null when the backend returns a non-ok response", async () => {
+  it("returns not-ok with status when the backend errors", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response("oops", { status: 500 })),
     );
-
     const result = await getSequences("prime");
-
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, status: 500 });
   });
 
-  it("encodes sequence ids for detail requests", async () => {
-    const fetchMock = vi.fn(
-      async () =>
-        new Response(JSON.stringify({ id: "A001055" }), { status: 200 }),
+  it("maps a network failure to a 503 result", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("fetch failed");
+      }),
     );
-    vi.stubGlobal("fetch", fetchMock);
+    const result = await getSequences("prime");
+    expect(result).toEqual({ ok: false, status: 503 });
+  });
 
-    await getSequence("A001055/with space");
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:5001/sequences/A001055%2Fwith%20space",
-      { cache: "no-store" },
+  it("preserves a 404 status from the detail endpoint so the page can call notFound()", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("not found", { status: 404 })),
     );
+    const result = await getSequence("A0000000");
+    expect(result).toEqual({ ok: false, status: 404 });
   });
 });

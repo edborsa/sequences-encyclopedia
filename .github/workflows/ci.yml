@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -18,14 +20,14 @@ jobs:
           POSTGRES_USER: oeis
           POSTGRES_PASSWORD: oeis
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd "pg_isready -U oeis -d oeis"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://oeis:oeis@localhost:5432/oeis
+      DATABASE_URL: postgresql://oeis:oeis@localhost:5433/oeis
     steps:
       - uses: actions/checkout@v4
 
@@ -39,10 +41,10 @@ jobs:
         run: python -m pip install -r api/requirements.txt
 
       - name: Check backend formatting
-        run: ruff format --check api pyproject.toml
+        run: ruff format --check api db_utils pyproject.toml
 
       - name: Lint backend
-        run: ruff check api pyproject.toml
+        run: ruff check api db_utils pyproject.toml
 
       - name: Run backend tests
         run: pytest
@@ -50,6 +52,9 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
     steps:
       - uses: actions/checkout@v4
 
@@ -60,16 +65,19 @@ jobs:
           cache-dependency-path: website/package-lock.json
 
       - name: Install frontend dependencies
-        run: npm ci --prefix website
+        run: npm ci
 
       - name: Check frontend formatting
-        run: npm --prefix website run format:check
+        run: npm run format:check
 
       - name: Lint frontend
-        run: npm --prefix website run lint
+        run: npm run lint
 
       - name: Typecheck frontend
-        run: npm --prefix website run typecheck
+        run: npm run typecheck
 
       - name: Run frontend tests
-        run: npm --prefix website run test
+        run: npm test
+
+      - name: Build frontend
+        run: npm run build

@@ -2,17 +2,16 @@ import argparse
 import json
 import os
 import random
-import urllib.error
 import sys
+import urllib.error
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from urllib.request import Request, urlopen
 
 import psycopg
 from psycopg.types.json import Jsonb
 
-
 DEFAULT_PAGES = ["https://oeis.org/A112798", "https://oeis.org/A001055"]
-DEFAULT_DATABASE_URL = "postgresql://oeis:oeis@localhost:5432/oeis"
+DEFAULT_DATABASE_URL = "postgresql://oeis:oeis@localhost:5433/oeis"
 
 
 def page_url(page):
@@ -25,10 +24,7 @@ def page_url(page):
 
 
 def random_pages(count):
-    return [
-        f"https://oeis.org/A{random.randint(1, 999999):06d}"
-        for _ in range(count)
-    ]
+    return [f"https://oeis.org/A{random.randint(1, 999999):06d}" for _ in range(count)]
 
 
 def fetch_sequence(page):
@@ -108,19 +104,28 @@ def main():
         "--database-url",
         default=os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL),
     )
+    parser.add_argument(
+        "--random-count",
+        type=int,
+        default=500,
+        help="number of random OEIS pages to add when no explicit pages are provided",
+    )
     args = parser.parse_args()
-    pages = (args.pages or DEFAULT_PAGES) + random_pages(500)
-    with psycopg.connect(args.database_url) as conn:
+    pages = list(args.pages) if args.pages else DEFAULT_PAGES + random_pages(args.random_count)
+    with psycopg.connect(args.database_url, autocommit=True) as conn:
         print(f"connected to {args.database_url}")
-        print(f"ensuring table")
+        print("ensuring table")
         ensure_table(conn)
         for page in pages:
-            print(f"fetching {page}")
-            sequence = fetch_sequence(page)
-            if sequence is None:
-                continue
-            print(f"upserting {page}")
-            upsert_sequence(conn, sequence)
+            try:
+                print(f"fetching {page}")
+                sequence = fetch_sequence(page)
+                if sequence is None:
+                    continue
+                print(f"upserting {page}")
+                upsert_sequence(conn, sequence)
+            except Exception as exc:
+                print(f"failed to load {page}: {exc}", file=sys.stderr)
 
 
 if __name__ == "__main__":
