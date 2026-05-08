@@ -12,4 +12,19 @@ python3 -m venv "$ROOT/api/.venv"
 npm --prefix "$ROOT/website" install
 
 docker compose -f "$ROOT/docker-compose.yml" up -d postgres
+ready=false
+for _ in {1..30}; do
+  if docker compose -f "$ROOT/docker-compose.yml" exec -T postgres \
+    pg_isready -U oeis -d oeis >/dev/null 2>&1; then
+    ready=true
+    break
+  fi
+  sleep 1
+done
+
+if [ "$ready" != true ]; then
+  echo "postgres did not become ready in time" >&2
+  exit 1
+fi
+
 "$ROOT/db_utils/.venv/bin/python" "$ROOT/db_utils/load_oeis.py"

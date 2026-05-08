@@ -16,8 +16,19 @@ async function get<T>(path: string) {
   return (await response.json()) as T;
 }
 
-export function getSequences() {
-  return get<Sequence[]>("/sequences");
+export function buildSequencesPath(searchTerm?: string) {
+  const normalizedSearchTerm = searchTerm?.trim();
+
+  if (!normalizedSearchTerm) {
+    return "/sequences";
+  }
+
+  const searchParams = new URLSearchParams({ q: normalizedSearchTerm });
+  return `/sequences?${searchParams.toString()}`;
+}
+
+export function getSequences(searchTerm?: string) {
+  return get<Sequence[]>(buildSequencesPath(searchTerm));
 }
 
 export function getSequence(id: string) {

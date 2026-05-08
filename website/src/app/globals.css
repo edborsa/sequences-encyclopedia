@@ -30,3 +30,47 @@ a {
 p {
   line-height: 1.6;
 }
+
+.search-form {
+  margin: 24px 0 32px;
+}
+
+.search-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.search-controls {
+  display: flex;
+  gap: 12px;
+}
+
+.search-input {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  flex: 1;
+  font: inherit;
+  padding: 10px 12px;
+}
+
+.search-button {
+  background: #0645ad;
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  font: inherit;
+  padding: 10px 16px;
+}
+
+.empty-state {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+@media (max-width: 640px) {
+  .search-controls {
+    flex-direction: column;
+  }
+}
