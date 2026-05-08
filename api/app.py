@@ -7,11 +7,17 @@ from psycopg.rows import dict_row
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://oeis:oeis@localhost:5432/oeis",
+    "postgresql://oeis:oeis@localhost:5433/oeis",
 )
 
 app = Flask(__name__)
 CORS(app)
+
+MAX_SEARCH_TERM_LENGTH = 100
+SEARCH_LIMIT = 100
+DEFAULT_LIMIT = 200
+
+SEQUENCE_COLUMNS = "sequence_number, oeis_id, name, data, keywords, offset_value"
 
 
 def query(sql, params=()):
@@ -33,6 +39,18 @@ def shape(row):
     }
 
 
+def normalize_search_term(value):
+    return (value or "").strip()[:MAX_SEARCH_TERM_LENGTH]
+
+
+def escape_like(value):
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def normalize_prefix_probe(value):
+    return value if value.upper().startswith("A") else f"A{value}"
+
+
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -40,27 +58,33 @@ def health():
 
 @app.get("/sequences")
 def sequences():
-    search_term = (request.args.get("q") or "").strip()
+    search_term = normalize_search_term(request.args.get("q", ""))
 
     if search_term:
+        substring_pattern = f"%{escape_like(search_term)}%"
+        prefix_pattern = f"{escape_like(normalize_prefix_probe(search_term))}%"
         rows = query(
-            """
-            select sequence_number, oeis_id, name, data, keywords, offset_value
+            f"""
+            select {SEQUENCE_COLUMNS}
             from oeis_sequences
-            where name ilike %s
-            order by name
-            limit 200
+            where name ilike %s escape '\\'
+               or oeis_id ilike %s escape '\\'
+            order by
+              case when oeis_id ilike %s escape '\\' then 0 else 1 end,
+              name
+            limit %s
             """,
-            (f"%{search_term}%",),
+            (substring_pattern, substring_pattern, prefix_pattern, SEARCH_LIMIT),
         )
     else:
         rows = query(
-            """
-            select sequence_number, oeis_id, name, data, keywords, offset_value
+            f"""
+            select {SEQUENCE_COLUMNS}
             from oeis_sequences
             order by name
-            limit 200
-            """
+            limit %s
+            """,
+            (DEFAULT_LIMIT,),
         )
     return jsonify([shape(row) for row in rows])
 
@@ -69,8 +93,8 @@ def sequences():
 def sequence(sequence_id):
     sequence_id = sequence_id.upper()
     rows = query(
-        """
-        select sequence_number, oeis_id, name, data, keywords, offset_value
+        f"""
+        select {SEQUENCE_COLUMNS}
         from oeis_sequences
         where oeis_id = %s
         limit 1
@@ -83,4 +107,4 @@ def sequence(sequence_id):
 
 
 if __name__ == "__main__":
-    app.run(port=int(os.getenv("PORT", "5001")), debug=True)
+    app.run(port=int(os.getenv("PORT", "5053")), debug=True)

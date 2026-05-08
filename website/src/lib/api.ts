@@ -8,12 +8,21 @@ export type Sequence = {
   offset: string | null;
 };
 
-const API_URL = process.env.API_URL ?? "http://localhost:5001";
+export type ApiResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; status: number };
 
-async function get<T>(path: string) {
-  const response = await fetch(`${API_URL}${path}`, { cache: "no-store" });
-  if (!response.ok) return null;
-  return (await response.json()) as T;
+const API_URL = process.env.API_URL ?? "http://localhost:5053";
+
+async function get<T>(path: string): Promise<ApiResult<T>> {
+  try {
+    const response = await fetch(`${API_URL}${path}`, { cache: "no-store" });
+    if (!response.ok) return { ok: false, status: response.status };
+    const data = (await response.json()) as T;
+    return { ok: true, data };
+  } catch {
+    return { ok: false, status: 503 };
+  }
 }
 
 export function buildSequencesPath(searchTerm?: string) {

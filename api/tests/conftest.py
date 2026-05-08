@@ -11,15 +11,15 @@ DATABASE_URL = os.getenv(
     "postgresql://oeis:oeis@localhost:5433/oeis",
 )
 
-TEST_SEQ_RANGE_START = 9_900_001
+TEST_SEQ_RANGE_START = 9_000_001
 
 FIXTURE_ROWS = [
     # (sequence_number, oeis_id, name, data, keywords, offset_value)
-    (9_900_001, "A9900001", "Alpha test sequence", "2,3,5,7", "easy", "1"),
-    (9_900_002, "A9900002", "Bravo with trailing comma", "1,2,", None, None),
-    (9_900_003, "A9900003", "Charlie empty data", "", None, "0"),
-    (9_900_004, "A9900004", "Hotglue Fibonacci sample", "1,1,2,3,5", "math", "0"),
-    (9_900_005, "A9900005", "Hotglue Fibonacci variants", "1,3,4,7", None, None),
+    (9_000_001, "A9000001", "Alpha test sequence", "2,3,5,7", "easy", "1"),
+    (9_000_002, "A9000002", "Bravo with trailing comma", "1,2,", None, None),
+    (9_000_003, "A9000003", "Charlie empty data", "", None, "0"),
+    (9_000_004, "A9000004", "Reference to 9001055 in title", "9,0,0,1,0,5,5", "meta", "2"),
+    (9_001_055, "A9001055", "Exact id target", "4,8,15,16,23,42", "id", "1"),
 ]
 
 
@@ -53,8 +53,12 @@ def database_url():
 
 @pytest.fixture(scope="module", autouse=True)
 def seeded_db(database_url):
-    # Routes open separate connections, so inserted fixture rows are the
-    # simplest way to make deterministic test data visible to the app.
+    """Insert deterministic fixture rows; remove them on teardown.
+
+    Routes open their own psycopg connections through api.app.query(), so a
+    transactional fixture would not be visible to them. Explicit insert/delete
+    is the simplest correct pattern.
+    """
     with psycopg.connect(database_url) as conn:
         ensure_table(conn)
         conn.execute(
@@ -84,5 +88,5 @@ def seeded_db(database_url):
 @pytest.fixture()
 def client():
     flask_app.testing = True
-    with flask_app.test_client() as client:
-        yield client
+    with flask_app.test_client() as c:
+        yield c
